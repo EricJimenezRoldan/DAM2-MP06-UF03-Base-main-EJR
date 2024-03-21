@@ -1,65 +1,59 @@
 package cat.iesesteveterradas;
 
 import java.io.IOException;
-
-import org.basex.api.client.ClientSession;
-import org.basex.core.*;
-import org.basex.core.cmd.*;
-
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
+import java.util.stream.Stream;
 
 public class Main {
-    private static final Logger logger = LoggerFactory.getLogger(Main.class);    
+    private static final String INPUT_DIR = "./data/input/";
+    private static final String OUTPUT_DIR = "./data/output/";
+    private BaseXConnection connection;
 
-    public static void main(String[] args) throws IOException {
-         // Initialize connection details
-        String host = "127.0.0.1";
-        int port = 1984;
-        String username = "admin"; // Default username
-        String password = "admin"; // Default password
+    public Main(BaseXConnection connection) {
+        this.connection = connection; //Connecta amb la bbdd
+    }
 
-        // Establish a connection to the BaseX server
-        try (ClientSession session = new ClientSession(host, port, username, password)) {
-            logger.info("Connected to BaseX server.");
-
-            session.execute(new Open("factbook")); 
-            
-            // Example query - adjust as needed
-            String myQuery = "sum(//country/@population/number())";
-
-            // Execute the query
-            String result = session.execute(new XQuery(myQuery));
-            // Print the result
-            logger.info("Query Result:");
-            logger.info(result);
-
-            myQuery = """
-                declare function local:gdpPerArea($country as element(country)) as xs:double? {
-                    let $gdpTotal := number($country/@gdp_total) * 1000000 (: Convertint de milions a unitats per precisió :)
-                    let $totalArea := number($country/@total_area) (: Asumint que l'àrea està en quilòmetres quadrats :)
-                    return if ($totalArea > 0) then $gdpTotal div $totalArea else ()
-                  };
-                
-                  for $country in //country
-                  let $gdpRatio := local:gdpPerArea($country)
-                  order by $gdpRatio descending
-                  return 
-                    <country name="{$country/@name}" gdp_per_area="{$gdpRatio}"/>                    
-            """;
-
-            // Execute the query
-            result = session.execute(new XQuery(myQuery));
-            // Print the result
-            logger.info("Query Result:");
-            logger.info(result);
-
-        } catch (BaseXException e) {
-            logger.error("Error connecting or executing the query: " + e.getMessage());
+    public void processQueries() {
+        try (Stream<Path> filePathStream = Files.walk(Paths.get(INPUT_DIR))) { // Entra al directori
+            filePathStream.filter(Files::isRegularFile) // Comprova que es un arxiu
+                          .forEach(this::executeAndSaveQuery);
         } catch (IOException e) {
-            logger.error(e.getMessage());
-        }        
+            e.printStackTrace();
+        }
+    }
+
+    private void executeAndSaveQuery(Path filePath) {
+        try {
+            String query = new String(Files.readAllBytes(filePath), StandardCharsets.UTF_8);
+            String result = connection.executeQuery(query); // Executa la query
+            saveResult(filePath.getFileName().toString().replace(".xquery", ".xml"), result); // Guarda l'arxiu en format xml com demana l'exercici
+            System.out.println("Arxiu guardat correctament!");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void saveResult(String fileName, String result) {
+        try {
+            Path outputPath = Paths.get(OUTPUT_DIR, fileName);
+            Files.createDirectories(outputPath.getParent()); 
+            Files.write(outputPath, result.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void main(String[] args) {
+        try {
+            BaseXConnection connection = new BaseXConnection("localhost", 1984, "admin", "admin");
+            Main processor = new Main(connection);
+            processor.processQueries();
+            connection.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
