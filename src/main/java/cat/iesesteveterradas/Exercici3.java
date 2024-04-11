@@ -40,7 +40,6 @@ public class Exercici3 {
             // Connexió a BaseX
             BaseXConnection baseXConn = new BaseXConnection("localhost", 1984, "admin", "admin");
 
-            // La teva consulta XQuery aquí
             String query = "let $questions := (" +
                            "  for $q in collection()/posts/row[@PostTypeId='1'] " +
                            "  order by number($q/@ViewCount) descending " +
@@ -57,6 +56,7 @@ public class Exercici3 {
             for (String sentence : sentences) {
                 String[] tokens = tokenizer.tokenize(sentence);
                 Span[] spans = nameFinder.find(tokens);
+                
 
                 for (Span span : spans) {
                     String entity = String.join(" ", java.util.Arrays.copyOfRange(tokens, span.getStart(), span.getEnd()));
