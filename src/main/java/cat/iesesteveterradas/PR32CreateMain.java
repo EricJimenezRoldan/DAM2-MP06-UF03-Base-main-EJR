@@ -11,9 +11,13 @@ import org.bson.Document;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.logging.Logger;
 
 public class PR32CreateMain {
+    private static final Logger logger = Logger.getLogger(PR32CreateMain.class.getName());
+
     public static void main(String[] args) {
+        logger.info("Iniciando la aplicación...");
         try {
             // Conexión a BaseX
             BaseXConnection baseXConn = new BaseXConnection("localhost", 1984, "admin", "admin");
@@ -58,14 +62,15 @@ public class PR32CreateMain {
                     }
 
                     // Insertar documento en MongoDB
-                    System.out.println("Intentando insertar documento...");
+                    logger.info("Intentando insertar documento...");
                     collection.insertOne(mongoDoc);
-                    System.out.println("Documento insertado con éxito.");
+                    logger.info("Documento insertado con éxito.");
 
                 }
             }
-            System.out.println("Datos insertados en MongoDB con éxito!");
+            logger.info("Finalizando la aplicación...");
         } catch (Exception e) {
+            logger.severe("Se produjo un error en la aplicación:");
             e.printStackTrace();
         }
     }
